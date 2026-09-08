@@ -61,7 +61,7 @@
     if (error) error.textContent = message;
   };
 
-  form?.addEventListener("submit", (event) => {
+  form?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = new FormData(form);
     const name = String(data.get("name") || "").trim();
@@ -82,12 +82,35 @@
       return;
     }
 
-    const phone = String(data.get("phone") || "").trim() || "nie podano";
-    const subject = encodeURIComponent(`Zapytanie ze strony: ${business}`);
-    const body = encodeURIComponent(
-      `Imię i nazwisko: ${name}\nE-mail: ${email}\nTelefon: ${phone}\nRodzaj działalności: ${business}\n\nOpis zapytania:\n${message}`
-    );
-    window.location.href = `mailto:ewastoeckwitkowska@gmail.com?subject=${subject}&body=${body}`;
+    const submitButton = form.querySelector(".form-submit");
+    const status = form.querySelector("[data-form-status]");
+    if (!(submitButton instanceof HTMLButtonElement) || !status) return;
+
+    submitButton.disabled = true;
+    submitButton.textContent = "Wysyłanie…";
+    status.className = "form-status";
+    status.textContent = "Wysyłam wiadomość…";
+
+    try {
+      const response = await fetch(form.action, {
+        method: "POST",
+        body: data,
+        headers: { Accept: "application/json" }
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) throw new Error("Wysyłka nie powiodła się.");
+
+      form.reset();
+      status.className = "form-status is-success";
+      status.textContent = "Dziękuję. Twoje zapytanie zostało wysłane. Odpowiem najszybciej, jak to możliwe.";
+    } catch {
+      status.className = "form-status is-error";
+      status.innerHTML =
+        'Nie udało się wysłać formularza. Napisz na <a href="mailto:ewastoeckwitkowska@gmail.com">ewastoeckwitkowska@gmail.com</a> lub zadzwoń: <a href="tel:+48605450552">605 450 552</a>.';
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = "Wyślij zapytanie";
+    }
   });
 
   if (year) year.textContent = String(new Date().getFullYear());
